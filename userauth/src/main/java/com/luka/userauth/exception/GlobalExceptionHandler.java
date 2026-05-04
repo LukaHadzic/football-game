@@ -1,9 +1,6 @@
 package com.luka.userauth.exception;
 
-import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
-import com.luka.userauth.exception.exceptionclasses.TokenNotValidException;
-import com.luka.userauth.exception.exceptionclasses.UserAlreadyExistsException;
-import com.luka.userauth.exception.exceptionclasses.VerificationFailedException;
+import com.luka.userauth.exception.exceptionclasses.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,6 +27,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(VerificationFailedException.class)
     public ResponseEntity<String> verificationFailed(VerificationFailedException verificationFailedException) {
         return new ResponseEntity<>(verificationFailedException.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(JWTInvalidException.class)
+    public ResponseEntity<String> jwtInvalidToken(JWTInvalidException jWTInvalidException) {
+        return new ResponseEntity<>(jWTInvalidException.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<String> jwtInvalidToken(UserNotFoundException userNotFoundException) {
+        return new ResponseEntity<>(userNotFoundException.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
 }

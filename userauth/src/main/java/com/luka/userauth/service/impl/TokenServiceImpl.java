@@ -14,7 +14,8 @@ import java.util.UUID;
 public class TokenServiceImpl implements TokenService {
 
     private final EmailVerificationTokenRepository emailVerifTokenRepository;
-    private final long VERIF_TOKEN_VALID_FOR = 1;
+    private final long VERIF_TOKEN_VALID_FOR_HOURS = 1;
+    //private final long REFRESH_TOKEN_VALID_FOR_DAYS = 7;
 
     public TokenServiceImpl(EmailVerificationTokenRepository emailVerifTokenRepository) {
         this.emailVerifTokenRepository = emailVerifTokenRepository;
@@ -28,7 +29,7 @@ public class TokenServiceImpl implements TokenService {
         tokenObj.setToken(UUID.randomUUID().toString());
         tokenObj.setUser(user);
         tokenObj.setCreatedAt(LocalDateTime.now());
-        tokenObj.setExpiresAt(LocalDateTime.now().plusDays(VERIF_TOKEN_VALID_FOR));
+        tokenObj.setExpiresAt(LocalDateTime.now().plusHours(VERIF_TOKEN_VALID_FOR_HOURS));
         tokenObj.setUsed(false);
 
         //Return token

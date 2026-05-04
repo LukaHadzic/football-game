@@ -1,12 +1,16 @@
 package com.luka.userauth.service.impl;
 
+import com.luka.userauth.dto.LoginDto;
+import com.luka.userauth.dto.LoginResponseDto;
 import com.luka.userauth.dto.RegisterDto;
 import com.luka.userauth.entity.EmailVerificationToken;
 import com.luka.userauth.entity.User;
 import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
 import com.luka.userauth.exception.exceptionclasses.UserAlreadyExistsException;
+import com.luka.userauth.exception.exceptionclasses.UserNotFoundException;
 import com.luka.userauth.mapper.UserMapper;
 import com.luka.userauth.repository.UserRepository;
+import com.luka.userauth.security.JWTUtil;
 import com.luka.userauth.service.AuthService;
 import com.luka.userauth.service.NotificationService;
 import com.luka.userauth.service.TokenService;
@@ -27,14 +31,16 @@ public class AuthServiceImpl implements AuthService {
     private final TokenService tokenService;
     private final TransactionTemplate transactionTemplate;
     private final NotificationService notificationService;
+    private final JWTUtil jwtUtil;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
         this.tokenService = tokenService;
         this.transactionTemplate = transactionTemplate;
         this.notificationService = notificationService;
+        this.jwtUtil = jwtUtil;
     }
 
     @Override
@@ -70,6 +76,23 @@ public class AuthServiceImpl implements AuthService {
     protected void saveTokenAndUser(User user, EmailVerificationToken emailVerificationToken) {
         userRepository.save(user);
         tokenService.saveToken(emailVerificationToken);
+    }
+
+    public LoginResponseDto login(LoginDto loginDto){
+        String nickOrEmail = loginDto.getNickOrEmail();
+
+        User user = userRepository.findByEmailOrNick(nickOrEmail)
+                .orElseThrow(() -> new UserNotFoundException("Wrong login credentials."));
+
+        if(!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())){
+            throw new UserNotFoundException("Wrong login credentials.");
+        }
+
+        String token = jwtUtil.generateToken(user);
+
+        return new LoginResponseDto(token, userMapper.toUserDto(user));
+
+
     }
 
 }
