@@ -1,7 +1,7 @@
 package com.luka.userauth.security.filters;
 
 import com.luka.userauth.exception.exceptionclasses.JWTInvalidException;
-import com.luka.userauth.security.JWTUtil;
+import com.luka.userauth.security.util.JWTUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,7 +10,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -52,6 +51,15 @@ public class JWTFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+
+        String path = request.getServletPath();
+
+        System.out.println("URL koji se dobija je: " + path);
+
+        if(path.equals("/auth/validate-email")){
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String token = getToken(request.getHeader("Authorization"));
 

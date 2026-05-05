@@ -12,16 +12,14 @@ import com.luka.userauth.exception.exceptionclasses.UserNotFoundException;
 import com.luka.userauth.mapper.UserMapper;
 import com.luka.userauth.repository.RoleRepository;
 import com.luka.userauth.repository.UserRepository;
-import com.luka.userauth.security.JWTUtil;
+import com.luka.userauth.security.util.JWTUtil;
 import com.luka.userauth.service.AuthService;
 import com.luka.userauth.service.NotificationService;
 import com.luka.userauth.service.TokenService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service

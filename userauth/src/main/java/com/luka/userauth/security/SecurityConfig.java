@@ -1,6 +1,7 @@
 package com.luka.userauth.security;
 
 import com.luka.userauth.security.filters.JWTFilter;
+import com.luka.userauth.security.util.JWTUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;

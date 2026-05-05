@@ -1,4 +1,4 @@
-package com.luka.userauth.security;
+package com.luka.userauth.security.util;
 
 import com.luka.userauth.entity.Role;
 import com.luka.userauth.entity.User;

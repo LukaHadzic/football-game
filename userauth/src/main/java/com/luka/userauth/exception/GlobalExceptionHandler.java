@@ -39,4 +39,9 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(userNotFoundException.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(RefreshTokenException.class)
+    public ResponseEntity<String> jwtInvalidToken(RefreshTokenException refreshTokenException) {
+        return new ResponseEntity<>(refreshTokenException.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
 }

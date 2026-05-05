@@ -3,10 +3,12 @@ package com.luka.userauth.controller;
 import com.luka.userauth.dto.LoginDto;
 import com.luka.userauth.dto.LoginResponseDto;
 import com.luka.userauth.dto.RegisterDto;
+import com.luka.userauth.security.util.RefreshTokenUtil;
 import com.luka.userauth.service.AuthService;
 import com.luka.userauth.service.LogoutService;
 import com.luka.userauth.service.TokenService;
 import com.luka.userauth.service.VerificationService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +22,14 @@ public class AuthController {
     private final TokenService tokenService;
     private final VerificationService verificationService;
     private final LogoutService logoutService;
+    private final RefreshTokenUtil refreshTokenUtil;
 
-    public AuthController(AuthService authService, TokenService tokenService, VerificationService verificationService, LogoutService logoutService) {
+    public AuthController(AuthService authService, TokenService tokenService, VerificationService verificationService, LogoutService logoutService, RefreshTokenUtil refreshTokenUtil) {
         this.authService = authService;
         this.tokenService = tokenService;
         this.verificationService = verificationService;
         this.logoutService = logoutService;
+        this.refreshTokenUtil = refreshTokenUtil;
     }
 
     @PostMapping("/register")
@@ -39,8 +43,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto request){
-        //Resiti problem sa roles u JWT tokenu i LoginResponse-u
+    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto request, HttpServletResponse resp){
+
+        //OVDE IDE LOGIKA ZA KREIRANJE REFRESH TOKENA I SVEGA OSTALOG
+            //Treba da se zove authService koji orkestrira kreiranje RefreshTokena u login metodi
+
+        refreshTokenUtil.addRefreshToken(resp, "OVDE TREBA REFRESH TOKEN");
+
         return new ResponseEntity<>(authService.login(request), HttpStatus.OK);
     }
 
