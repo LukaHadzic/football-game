@@ -30,6 +30,9 @@ public class JWTUtil {
         //Extract role names from user
         Set<String> userRolesSet = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
 
+        System.out.println("Veličina seta: " + userRolesSet.size());
+        userRolesSet.stream().forEach(System.out::println);
+
         return Jwts.builder()
                 .claim("roles", userRolesSet)
                 .subject(String.valueOf(user.getId()))

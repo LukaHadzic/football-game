@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Component
 public class JWTFilter extends OncePerRequestFilter {
 
     private final JWTUtil jwtUtil;
@@ -32,7 +31,7 @@ public class JWTFilter extends OncePerRequestFilter {
         String path = req.getServletPath();
         return path.equals("/auth/register")
                 || path.equals("/auth/login")
-                || path.equals("/auth/validate-email");
+                || path.equals("/auth/validate-email?token=");
     }
 
     private String getToken(String reqAuthHeader){

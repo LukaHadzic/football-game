@@ -3,7 +3,9 @@ package com.luka.userauth.entity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name="users")
@@ -33,13 +35,9 @@ public class User {
 
     private LocalDateTime createdAt;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name="user_roles",
-            joinColumns = @JoinColumn(name="user_id"),
-            inverseJoinColumns = @JoinColumn(name="role_id")
-    )
-    private Set<Role> roles;
+    @OneToMany(
+            mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UserRoles> userRoles = new HashSet<>();
 
     @PrePersist
     protected void onCreate(){
@@ -48,7 +46,7 @@ public class User {
 
     public User() {}
 
-    public User(Long id, String nick, String name, String surname, String email, String password, boolean verified, LocalDateTime createdAt, Set<Role> roles) {
+    public User(Long id, String nick, String name, String surname, String email, String password, boolean verified, LocalDateTime createdAt, Set<UserRoles> userRoles) {
         this.id = id;
         this.nick = nick;
         this.name = name;
@@ -57,7 +55,7 @@ public class User {
         this.password = password;
         this.verified = verified;
         this.createdAt = createdAt;
-        this.roles = roles;
+        this.userRoles = userRoles;
     }
 
     public Long getId() {
@@ -125,11 +123,18 @@ public class User {
     }
 
     public Set<Role> getRoles() {
-        return roles;
+        return userRoles.stream().map(UserRoles::getRole).collect(Collectors.toSet());
     }
 
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
+    public void addRole(Role role){
+        UserRoles newUserRoles = new UserRoles();
+
+        newUserRoles.setUser(this);
+        newUserRoles.setRole(role);
+
+//        newUserRoles.setId(new UserRolesId(this.id, role.getId()));
+
+        this.userRoles.add(newUserRoles);
     }
 
 }

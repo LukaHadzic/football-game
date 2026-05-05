@@ -4,11 +4,13 @@ import com.luka.userauth.dto.LoginDto;
 import com.luka.userauth.dto.LoginResponseDto;
 import com.luka.userauth.dto.RegisterDto;
 import com.luka.userauth.entity.EmailVerificationToken;
+import com.luka.userauth.entity.Role;
 import com.luka.userauth.entity.User;
 import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
 import com.luka.userauth.exception.exceptionclasses.UserAlreadyExistsException;
 import com.luka.userauth.exception.exceptionclasses.UserNotFoundException;
 import com.luka.userauth.mapper.UserMapper;
+import com.luka.userauth.repository.RoleRepository;
 import com.luka.userauth.repository.UserRepository;
 import com.luka.userauth.security.JWTUtil;
 import com.luka.userauth.service.AuthService;
@@ -32,8 +34,9 @@ public class AuthServiceImpl implements AuthService {
     private final TransactionTemplate transactionTemplate;
     private final NotificationService notificationService;
     private final JWTUtil jwtUtil;
+    private final RoleRepository roleRepository;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
@@ -41,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
         this.transactionTemplate = transactionTemplate;
         this.notificationService = notificationService;
         this.jwtUtil = jwtUtil;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -49,10 +53,14 @@ public class AuthServiceImpl implements AuthService {
         Optional<User> u1 = userRepository.findByEmail(registerDto.getEmail());
         if(u1.isPresent()) throw new UserAlreadyExistsException("Cannot finish registration - User already exists.");
 
+        Role defaultRole = roleRepository.findByName("ROLE_USER")
+                .orElseThrow(() -> new RegistrationFailedException("Server error - cannot finsih registration, default access role not found."));
+
         //Create entity from request data
         User user = userMapper.registerToEntity(registerDto);
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
         user.setVerified(false);
+        user.addRole(defaultRole);
 
         //Call TokenService to generate token
         EmailVerificationToken generatedToken = tokenService.generateToken(user);
@@ -60,10 +68,11 @@ public class AuthServiceImpl implements AuthService {
         //Open transaction to save User and token
         try {
             transactionTemplate.execute(status -> {
-                saveTokenAndUser(user, generatedToken);
+                saveTokenAndUser(user, generatedToken, defaultRole);
                 return null;
             });
         }catch(Exception e) {
+            e.printStackTrace();
             throw new RegistrationFailedException("Registration failed, please try again later.");
         }
 
@@ -73,8 +82,8 @@ public class AuthServiceImpl implements AuthService {
         return "Check provided email's inbox in order to verify Your identity.";
     }
 
-    protected void saveTokenAndUser(User user, EmailVerificationToken emailVerificationToken) {
-        userRepository.save(user);
+    protected void saveTokenAndUser(User user, EmailVerificationToken emailVerificationToken, Role defaultRole) {
+        userRepository.saveAndFlush(user);
         tokenService.saveToken(emailVerificationToken);
     }
 
