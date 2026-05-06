@@ -27,7 +27,7 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     @Override
-    public String verifyUser(String token) {
+    public User verifyUser(String token) {
         //Gather token from db and check if it is valid
         EmailVerificationToken tokenObj = emailVerifTokenRepository.findByToken(token)
                 .orElseThrow(() -> new TokenNotValidException("Cannot finish registration, token is not valid."));
@@ -42,6 +42,8 @@ public class VerificationServiceImpl implements VerificationService {
 
         User user = tokenObj.getUser();
 
+
+
         try {
             tsTemplate.execute(status -> {
                 tokenObj.setUsed(true);
@@ -54,6 +56,6 @@ public class VerificationServiceImpl implements VerificationService {
             throw new VerificationFailedException("Email verification failed.");
         }
 
-        return "Email sucessfully verified.";
+        return user;
     }
 }

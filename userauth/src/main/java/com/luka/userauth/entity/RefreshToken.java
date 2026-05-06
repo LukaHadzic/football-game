@@ -73,4 +73,8 @@ public class RefreshToken {
     public void setUser(User user) {
         this.user = user;
     }
+
+    public boolean isExpired(){
+        return this.expiresAt.isBefore(LocalDateTime.now());
+    }
 }

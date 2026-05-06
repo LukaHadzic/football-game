@@ -1,13 +1,13 @@
 package com.luka.userauth.controller;
 
 import com.luka.userauth.dto.LoginDto;
-import com.luka.userauth.dto.LoginResponseDto;
+import com.luka.userauth.dto.LoginResponseDtoController;
+import com.luka.userauth.dto.LoginResponseDtoService;
 import com.luka.userauth.dto.RegisterDto;
+import com.luka.userauth.entity.RefreshToken;
+import com.luka.userauth.entity.User;
 import com.luka.userauth.security.util.RefreshTokenUtil;
-import com.luka.userauth.service.AuthService;
-import com.luka.userauth.service.LogoutService;
-import com.luka.userauth.service.TokenService;
-import com.luka.userauth.service.VerificationService;
+import com.luka.userauth.service.*;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,13 +23,15 @@ public class AuthController {
     private final VerificationService verificationService;
     private final LogoutService logoutService;
     private final RefreshTokenUtil refreshTokenUtil;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthController(AuthService authService, TokenService tokenService, VerificationService verificationService, LogoutService logoutService, RefreshTokenUtil refreshTokenUtil) {
+    public AuthController(AuthService authService, TokenService tokenService, VerificationService verificationService, LogoutService logoutService, RefreshTokenUtil refreshTokenUtil, RefreshTokenService refreshTokenService) {
         this.authService = authService;
         this.tokenService = tokenService;
         this.verificationService = verificationService;
         this.logoutService = logoutService;
         this.refreshTokenUtil = refreshTokenUtil;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @PostMapping("/register")
@@ -39,18 +41,23 @@ public class AuthController {
 
     @GetMapping("/validate-email")
     public ResponseEntity<String> verifyEMail(@RequestParam String token){
-        return new ResponseEntity<>(verificationService.verifyUser(token), HttpStatus.OK);
+
+        User user = verificationService.verifyUser(token);
+
+        RefreshToken refreshToken = refreshTokenService.create(user);
+
+        return new ResponseEntity<>("Email successfully verified.", HttpStatus.OK);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto request, HttpServletResponse resp){
+    public ResponseEntity<LoginResponseDtoController> login(@Valid @RequestBody LoginDto request, HttpServletResponse resp){
 
-        //OVDE IDE LOGIKA ZA KREIRANJE REFRESH TOKENA I SVEGA OSTALOG
-            //Treba da se zove authService koji orkestrira kreiranje RefreshTokena u login metodi
+        LoginResponseDtoService serviceResp = authService.login(request);
 
-        refreshTokenUtil.addRefreshToken(resp, "OVDE TREBA REFRESH TOKEN");
+        refreshTokenUtil.addRefreshToken(resp, serviceResp.getRefreshToken());
 
-        return new ResponseEntity<>(authService.login(request), HttpStatus.OK);
+        return new ResponseEntity<>(new LoginResponseDtoController(serviceResp.getAccessToken(), serviceResp.getUserDto()), HttpStatus.OK);
     }
+    // DODATI FLYWAY SKRIPTE ZA REFRESHTOKEN-e -> napraviti tabelu i relacije koje treba
 
 }

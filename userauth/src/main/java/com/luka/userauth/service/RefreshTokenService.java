@@ -10,6 +10,8 @@ public interface RefreshTokenService {
 
     RefreshToken validate(String token);
 
+    RefreshToken validate(User user);
+
     RefreshToken rotate(RefreshToken oldToken);
 
     void revoke(String token);

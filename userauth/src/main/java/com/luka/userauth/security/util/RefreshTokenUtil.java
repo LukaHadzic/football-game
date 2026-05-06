@@ -10,14 +10,14 @@ public class RefreshTokenUtil {
 
     private final boolean IS_PRODUCTION = false;
 
-    private final int COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
+    private final int COOKIE_MAX_AGE_DAYS = 7 ;
 
     public void addRefreshToken(HttpServletResponse resp, String token){
         Cookie cookie = new Cookie("refreshToken", token);
         cookie.setHttpOnly(true);
         cookie.setSecure(IS_PRODUCTION);
         cookie.setPath("/auth/refresh");
-        cookie.setMaxAge(COOKIE_MAX_AGE);
+        cookie.setMaxAge(COOKIE_MAX_AGE_DAYS * 24 * 60 * 60);
 
         resp.addCookie(cookie);
     }

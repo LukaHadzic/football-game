@@ -1,9 +1,10 @@
 package com.luka.userauth.service.impl;
 
 import com.luka.userauth.dto.LoginDto;
-import com.luka.userauth.dto.LoginResponseDto;
+import com.luka.userauth.dto.LoginResponseDtoService;
 import com.luka.userauth.dto.RegisterDto;
 import com.luka.userauth.entity.EmailVerificationToken;
+import com.luka.userauth.entity.RefreshToken;
 import com.luka.userauth.entity.Role;
 import com.luka.userauth.entity.User;
 import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
@@ -15,6 +16,7 @@ import com.luka.userauth.repository.UserRepository;
 import com.luka.userauth.security.util.JWTUtil;
 import com.luka.userauth.service.AuthService;
 import com.luka.userauth.service.NotificationService;
+import com.luka.userauth.service.RefreshTokenService;
 import com.luka.userauth.service.TokenService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,8 +35,9 @@ public class AuthServiceImpl implements AuthService {
     private final NotificationService notificationService;
     private final JWTUtil jwtUtil;
     private final RoleRepository roleRepository;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil, RoleRepository roleRepository) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil, RoleRepository roleRepository, RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
@@ -43,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
         this.notificationService = notificationService;
         this.jwtUtil = jwtUtil;
         this.roleRepository = roleRepository;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -85,7 +89,7 @@ public class AuthServiceImpl implements AuthService {
         tokenService.saveToken(emailVerificationToken);
     }
 
-    public LoginResponseDto login(LoginDto loginDto){
+    public LoginResponseDtoService login(LoginDto loginDto){
         String nickOrEmail = loginDto.getNickOrEmail();
 
         User user = userRepository.findByEmailOrNick(nickOrEmail)
@@ -95,10 +99,15 @@ public class AuthServiceImpl implements AuthService {
             throw new UserNotFoundException("Wrong login credentials.");
         }
 
+        RefreshToken refreshToken = refreshTokenService.validate(user);
+        //Nije doboro - sta ako je refresh istekao - proveriti
+        //Vrv u validate(User) vratiti null ako je istekao pa ovde provera za create
+
+        RefreshToken newRefreshToken = refreshTokenService.rotate(refreshToken);
+
         String token = jwtUtil.generateToken(user);
 
-        return new LoginResponseDto(token, userMapper.toUserDto(user));
-
+        return new LoginResponseDtoService(token, userMapper.toUserDto(user), newRefreshToken.getToken());
 
     }
 

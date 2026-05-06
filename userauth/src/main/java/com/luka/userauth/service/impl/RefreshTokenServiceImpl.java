@@ -8,11 +8,13 @@ import com.luka.userauth.repository.RefreshTokenRepository;
 import com.luka.userauth.service.RefreshTokenService;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Service
 public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     private final long REFRESH_TOKEN_VALID_FOR_DAYS = 7;
@@ -40,9 +42,25 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     public RefreshToken validate(String token) {
+        RefreshToken dbToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RefreshTokenException("Invalid refresh token."));
 
+        if (dbToken.isRevoked()) throw new RefreshTokenException("Refresh token is revoked.");
+        if (dbToken.isExpired()) throw new RefreshTokenException("Refresh token is expired.");
 
-        return null;
+        return dbToken;
+
+    }
+
+    @Override
+    public RefreshToken validate(User user){
+        RefreshToken dbToken = refreshTokenRepository.findByUserAndRevokedFalse(user)
+                .orElseThrow(() -> new RefreshTokenException("Invalid refresh token."));
+
+        if (dbToken.isExpired()) throw new RefreshTokenException("Refresh token is expired.");
+
+        return dbToken;
+
     }
 
     @Override
@@ -67,7 +85,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                 }
 
                 newToken.setUser(oldDbToken.getUser());
-                oldDbToken.setRevoked(true);
+                revoke(oldToken.getToken());
 
                 refreshTokenRepository.save(oldDbToken);
                 return refreshTokenRepository.save(newToken);

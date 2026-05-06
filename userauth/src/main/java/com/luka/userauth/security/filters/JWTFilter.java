@@ -52,15 +52,6 @@ public class JWTFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String path = request.getServletPath();
-
-        System.out.println("URL koji se dobija je: " + path);
-
-        if(path.equals("/auth/validate-email")){
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         String token = getToken(request.getHeader("Authorization"));
 
         if (jwtUtil.isTokenValid(token)){

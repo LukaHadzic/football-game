@@ -1,6 +1,8 @@
 package com.luka.userauth.service;
 
+import com.luka.userauth.entity.User;
+
 public interface VerificationService {
 
-    public String verifyUser(String token);
+    public User verifyUser(String token);
 }
