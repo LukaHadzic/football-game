@@ -13,9 +13,9 @@ public class RefreshToken {
     private Long id;
     @Column(name = "token", unique = true, nullable = false)
     private String token;
-    @Column(name = "is_revoked", nullable = false)
+    @Column(name = "revoked", nullable = false)
     private boolean revoked;
-    @Column (name = "expires_at", nullable = false)
+    @Column (name = "created_at", nullable = false)
     private LocalDateTime createdAt;
     @Column (name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
@@ -26,10 +26,11 @@ public class RefreshToken {
     public RefreshToken() {
     }
 
-    public RefreshToken(Long id, String token, boolean revoked, LocalDateTime expiresAt, User user) {
+    public RefreshToken(Long id, String token, boolean revoked, LocalDateTime createdAt, LocalDateTime expiresAt, User user) {
         this.id = id;
         this.token = token;
         this.revoked = revoked;
+        this.createdAt = createdAt;
         this.expiresAt = expiresAt;
         this.user = user;
     }
@@ -56,6 +57,14 @@ public class RefreshToken {
 
     public void setRevoked(boolean used) {
         this.revoked = used;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public LocalDateTime getExpiresAt() {

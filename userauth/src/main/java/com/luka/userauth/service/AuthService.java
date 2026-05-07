@@ -8,10 +8,11 @@ public interface AuthService {
 
 //    registration
     public String register(RegisterDto registerDto);
-//    verification
-//    login
+//    verification -> U VerificationService
+//    login -> ZAVRSENO
     public LoginResponseDtoService login(LoginDto loginDto);
 //    logout
+    public void logout(String token);
 //    jwt refresh
 
 }

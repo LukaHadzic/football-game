@@ -9,9 +9,11 @@ import com.luka.userauth.service.RefreshTokenService;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -35,6 +37,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         newToken.setUser(user);
         newToken.setToken(UUID.randomUUID().toString());
         newToken.setRevoked(false);
+        newToken.setCreatedAt(LocalDateTime.now());
         newToken.setExpiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_VALID_FOR_DAYS));
 
         return refreshTokenRepository.save(newToken);
@@ -45,21 +48,26 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         RefreshToken dbToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new RefreshTokenException("Invalid refresh token."));
 
-        if (dbToken.isRevoked()) throw new RefreshTokenException("Refresh token is revoked.");
-        if (dbToken.isExpired()) throw new RefreshTokenException("Refresh token is expired.");
+        if (dbToken.isRevoked() || dbToken.isExpired()) return null;
 
         return dbToken;
 
     }
 
     @Override
-    public RefreshToken validate(User user){
-        RefreshToken dbToken = refreshTokenRepository.findByUserAndRevokedFalse(user)
-                .orElseThrow(() -> new RefreshTokenException("Invalid refresh token."));
+    public RefreshToken validateOnLogin(User user){
+        Optional<RefreshToken> dbToken = refreshTokenRepository.findByUserAndRevokedFalse(user);
 
-        if (dbToken.isExpired()) throw new RefreshTokenException("Refresh token is expired.");
+        if (dbToken.isPresent()){
+            RefreshToken refreshToken = dbToken.get();
+            if (refreshToken.isExpired()){
+                revoke(refreshToken.getToken());
+                return create(user);
+            }
+            return refreshToken;
+        }
 
-        return dbToken;
+        return create(user);
 
     }
 
@@ -69,6 +77,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         RefreshToken newToken = new RefreshToken();
         newToken.setToken(UUID.randomUUID().toString());
         newToken.setRevoked(false);
+        newToken.setCreatedAt(LocalDateTime.now());
         newToken.setExpiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_VALID_FOR_DAYS));
 
         try {
@@ -97,6 +106,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         }
     }
 
+    @Transactional
     @Override
     public void revoke(String token) {
 

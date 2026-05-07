@@ -16,17 +16,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
-//    private final JWTFilter jwtFilter;
+    private final JWTFilter jwtFilter;
 
-//    public SecurityConfig(JWTFilter jwtFilter) {
-//        this.jwtFilter = jwtFilter;
-//    }
-
-    private final JWTUtil jwtUtil;
-
-    public SecurityConfig(JWTUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
+    public SecurityConfig(JWTFilter jwtFilter) {
+        this.jwtFilter = jwtFilter;
     }
+
+//    private final JWTUtil jwtUtil;
+//
+//    public SecurityConfig(JWTUtil jwtUtil) {
+//        this.jwtUtil = jwtUtil;
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -36,13 +36,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        JWTFilter jwtFilter = new JWTFilter(jwtUtil);
-
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auth/validate-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/logout").permitAll()
                         .anyRequest().authenticated()).addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

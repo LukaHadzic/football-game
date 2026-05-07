@@ -10,7 +10,7 @@ public interface RefreshTokenService {
 
     RefreshToken validate(String token);
 
-    RefreshToken validate(User user);
+    RefreshToken validateOnLogin(User user);
 
     RefreshToken rotate(RefreshToken oldToken);
 

@@ -7,6 +7,7 @@ import com.luka.userauth.entity.EmailVerificationToken;
 import com.luka.userauth.entity.RefreshToken;
 import com.luka.userauth.entity.Role;
 import com.luka.userauth.entity.User;
+import com.luka.userauth.exception.exceptionclasses.RefreshTokenException;
 import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
 import com.luka.userauth.exception.exceptionclasses.UserAlreadyExistsException;
 import com.luka.userauth.exception.exceptionclasses.UserNotFoundException;
@@ -99,7 +100,7 @@ public class AuthServiceImpl implements AuthService {
             throw new UserNotFoundException("Wrong login credentials.");
         }
 
-        RefreshToken refreshToken = refreshTokenService.validate(user);
+        RefreshToken refreshToken = refreshTokenService.validateOnLogin(user);
         //Nije doboro - sta ako je refresh istekao - proveriti
         //Vrv u validate(User) vratiti null ako je istekao pa ovde provera za create
 
@@ -109,6 +110,17 @@ public class AuthServiceImpl implements AuthService {
 
         return new LoginResponseDtoService(token, userMapper.toUserDto(user), newRefreshToken.getToken());
 
+    }
+
+    @Override
+    public void logout(String token) {
+
+        if(token == null) return;
+        RefreshToken dbToken = refreshTokenService.validate(token);
+
+        if(dbToken != null){
+            refreshTokenService.revoke(token);
+        }
     }
 
 }

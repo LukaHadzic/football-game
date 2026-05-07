@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Component
 public class JWTFilter extends OncePerRequestFilter {
 
     private final JWTUtil jwtUtil;
@@ -30,7 +32,8 @@ public class JWTFilter extends OncePerRequestFilter {
         String path = req.getServletPath();
         return path.equals("/auth/register")
                 || path.equals("/auth/login")
-                || path.equals("/auth/validate-email?token=");
+                || path.equals("/auth/validate-email")
+                || path.equals("/auth/logout");
     }
 
     private String getToken(String reqAuthHeader){

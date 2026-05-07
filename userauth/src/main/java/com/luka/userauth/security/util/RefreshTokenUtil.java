@@ -16,13 +16,13 @@ public class RefreshTokenUtil {
         Cookie cookie = new Cookie("refreshToken", token);
         cookie.setHttpOnly(true);
         cookie.setSecure(IS_PRODUCTION);
-        cookie.setPath("/auth/refresh");
+        cookie.setPath("/auth");
         cookie.setMaxAge(COOKIE_MAX_AGE_DAYS * 24 * 60 * 60);
 
         resp.addCookie(cookie);
     }
 
-    private String extractFromCookie(HttpServletRequest req){
+    public String extractFromCookie(HttpServletRequest req){
         if(req.getCookies() == null) return null;
 
         for(Cookie cookie : req.getCookies()) {
@@ -31,6 +31,16 @@ public class RefreshTokenUtil {
             }
         }
         return null;
+    }
+
+    public void deleteRefreshToken(HttpServletResponse resp){
+        Cookie cookie = new Cookie("refreshToken", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(IS_PRODUCTION);
+        cookie.setPath("/auth"); //Potencijalni bug
+        cookie.setMaxAge(0);
+
+        resp.addCookie(cookie);
     }
 
 }

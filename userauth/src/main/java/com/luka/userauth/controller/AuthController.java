@@ -8,6 +8,7 @@ import com.luka.userauth.entity.RefreshToken;
 import com.luka.userauth.entity.User;
 import com.luka.userauth.security.util.RefreshTokenUtil;
 import com.luka.userauth.service.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -58,6 +59,14 @@ public class AuthController {
 
         return new ResponseEntity<>(new LoginResponseDtoController(serviceResp.getAccessToken(), serviceResp.getUserDto()), HttpStatus.OK);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletRequest req, HttpServletResponse resp){
+        authService.logout(refreshTokenUtil.extractFromCookie(req));
+        refreshTokenUtil.deleteRefreshToken(resp);
+        return new ResponseEntity<>("Logout successful.", HttpStatus.OK);
+    }
+
     // DODATI FLYWAY SKRIPTE ZA REFRESHTOKEN-e -> napraviti tabelu i relacije koje treba
 
 }
