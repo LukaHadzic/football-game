@@ -120,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(String token) {
 
-        if (token == null) return;
+        if (token == null || token.isEmpty()) return;
         RefreshToken dbToken = refreshTokenService.validate(token);
 
         if (dbToken != null) {

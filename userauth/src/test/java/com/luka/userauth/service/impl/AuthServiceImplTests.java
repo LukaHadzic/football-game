@@ -1,20 +1,27 @@
 package com.luka.userauth.service.impl;
 
 import com.luka.userauth.config.TestClockConfig;
+import com.luka.userauth.dto.LoginDto;
+import com.luka.userauth.dto.LoginResponseDtoService;
 import com.luka.userauth.dto.RegisterDto;
+import com.luka.userauth.dto.UserDto;
+import com.luka.userauth.entity.EmailVerificationToken;
+import com.luka.userauth.entity.RefreshToken;
+import com.luka.userauth.entity.Role;
 import com.luka.userauth.entity.User;
 import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
 import com.luka.userauth.exception.exceptionclasses.UserAlreadyExistsException;
+import com.luka.userauth.exception.exceptionclasses.UserNotFoundException;
+import com.luka.userauth.mapper.UserMapper;
 import com.luka.userauth.repository.RoleRepository;
 import com.luka.userauth.repository.UserRepository;
+import com.luka.userauth.security.util.JWTUtil;
 import com.luka.userauth.service.AuthService;
 import com.luka.userauth.service.NotificationService;
+import com.luka.userauth.service.RefreshTokenService;
 import com.luka.userauth.service.TokenService;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.params.aggregator.AggregateWith;
 import org.junit.jupiter.params.aggregator.ArgumentsAccessor;
@@ -25,12 +32,17 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 @Import(TestClockConfig.class)
 @SpringBootTest
@@ -39,7 +51,7 @@ public class AuthServiceImplTests {
 
     @Autowired
     private Clock clock;
-    @Autowired
+    @MockitoSpyBean
     private AuthService authService;
 
     @MockitoBean
@@ -51,7 +63,12 @@ public class AuthServiceImplTests {
     private TokenService tokenService;
     @MockitoBean
     private NotificationService notificationService;
+    @MockitoBean
+    private RefreshTokenService refreshTokenService;
 
+    private User user;
+    private EmailVerificationToken verifToken;
+    private RefreshToken refreshToken;
 //    @Test
 //    @CsvFileSource("FILEURL")
 //    public void registerFailUserExistsTest(@AggregateWith(RegisterDtoAggregator.class) RegisterDto registerDto) {
@@ -60,21 +77,29 @@ public class AuthServiceImplTests {
 //                .thenReturn(null);
 //
 //    }
+
+
+    @BeforeEach
+    void setUp(){
+        user = new User(1L, "Player1", "NamePlayer1", "SurnamePlayer1",
+                "player1@gmail.com", "Player1!", false, LocalDateTime.now(clock).minusDays(1),
+                null);
+
+    }
+
     @Nested
     class RegisterTests{
 
-        private User user;
         private RegisterDto registerDto;
-
+        private Role role;
         @BeforeEach
-        void setUp(){
-            user = new User(null, "Player1", "NamePlayer1", "SurnamePlayer1",
-                    "player1@gmail.com", "Player1!", false, LocalDateTime.now(clock).minusDays(1),
-                    null);
-
-            registerDto = new RegisterDto("a", "b", "c", "abc@example.com",
-                    "Regularpassword1@");
-        }
+            void setUp(){
+                registerDto = new RegisterDto("a", "b", "c", "abc@example.com",
+                        "Regularpassword1@");
+                verifToken = new EmailVerificationToken(null, "tokenLengthShouldBeExactly36CharsABC",
+                        LocalDateTime.now(clock), LocalDateTime.now(clock).plusDays(7), false, user);
+                role = new Role(1L, "ROLE_USER");
+            }
 
         @Test
         void registerFailUserExistsTest(){
@@ -105,8 +130,241 @@ public class AuthServiceImplTests {
             Mockito.verify(userRepository).findByEmail(Mockito.anyString());
             Mockito.verify(roleRepository).findByName(Mockito.anyString());
         }
+
+
+
+        @Disabled
+        @Test // Nije dobro zasto se baca NPE???
+        void registerFailTokenNullTest(){
+
+            Mockito.when(userRepository.findByEmail(Mockito.anyString()))
+                    .thenReturn(Optional.empty());
+
+            Mockito.when(roleRepository.findByName(Mockito.anyString()))
+                    .thenReturn(Optional.of(role));
+
+            Mockito.when(tokenService.generateToken(Mockito.any(User.class)))
+                            .thenReturn(null); //Ovde je greska???
+
+            Mockito.when(userRepository.saveAndFlush(Mockito.any(User.class)))
+                    .thenReturn(user);
+
+            Assertions.assertThrows(RegistrationFailedException.class, () -> {
+               authService.register(registerDto);
+               Mockito.verify(userRepository).saveAndFlush(Mockito.any(User.class));
+               Mockito.verify(tokenService).saveToken(null);
+            });
+
+        }
+
+        @Test
+        void registerFailSaveErrorTest(){
+
+            Mockito.when(userRepository.findByEmail(Mockito.anyString()))
+                    .thenReturn(Optional.empty());
+
+            Mockito.when(roleRepository.findByName(Mockito.anyString()))
+                    .thenReturn(Optional.of(role));
+
+            Mockito.doThrow(new RuntimeException())
+                    .when(userRepository)
+                    .saveAndFlush(Mockito.any(User.class));
+
+                Mockito.doReturn(verifToken )
+                        .when(tokenService)
+                        .generateToken(Mockito.any(User.class));
+
+                Mockito.when(userRepository.save(Mockito.any(User.class)))
+                                .thenReturn(user);
+
+            Assertions.assertThrows(RegistrationFailedException.class, () -> {
+                authService.register(registerDto);
+
+                Mockito.verify(tokenService).saveToken(verifToken);
+             });
+
+        }
+
+        @Test
+        void registerSuccessTest(){
+
+            Mockito.when(userRepository.findByEmail(Mockito.anyString()))
+                    .thenReturn(Optional.empty());
+
+            Mockito.when(roleRepository.findByName(Mockito.anyString()))
+                    .thenReturn(Optional.of(role));
+
+            Mockito.doReturn(verifToken )
+                    .when(tokenService)
+                    .generateToken(Mockito.any(User.class));
+
+            Mockito.when(userRepository.saveAndFlush(Mockito.any(User.class)))
+                            .thenReturn(user);
+
+            Mockito.doNothing()
+                    .when(tokenService)
+                    .saveToken(verifToken);
+
+            Mockito.doNothing()
+                    .when(notificationService)
+                    .sendVerificationEmail(user.getEmail(), verifToken.getToken());
+
+            String s = authService.register(registerDto);
+
+            Assertions.assertNotNull(s);
+            Assertions.assertFalse(s.isEmpty());
+
+        }
+
     }
 
+    @Nested
+    class LoginTests{
+        private LoginDto loginDto;
+        private UserDto userDto;
+
+        @MockitoBean
+        private PasswordEncoder passwordEncoder;
+        @MockitoBean
+        private JWTUtil jwtUtil;
+        @MockitoBean
+        private LoginResponseDtoService loginResponseServiceDto;
+        @MockitoBean
+        private UserMapper userMapper;
+
+        @BeforeEach
+        void setUp(){
+            loginDto = new LoginDto("Nick1", "PasswordForUser1@");
+            refreshToken = new RefreshToken(1L, "tokenLengthShouldBeExactly36CharsABC", false, LocalDateTime.now(clock),
+                    LocalDateTime.now(clock).plusDays(7), user);
+        }
+
+        @Test
+        void loginFailUserNotFoundTest(){
+
+            Mockito.when(userRepository.findByEmailOrNick(Mockito.anyString()))
+                    .thenReturn(Optional.empty());
+
+            Assertions.assertThrows(UserNotFoundException.class, () -> {
+               authService.login(loginDto);
+            });
+
+            Mockito.verify(userRepository).findByEmailOrNick(Mockito.anyString());
+
+        }
+
+        @Test
+        void loginFailWrongPassword(){
+
+            Mockito.when(userRepository.findByEmailOrNick(Mockito.anyString()))
+                    .thenReturn(Optional.of(user));
+
+            Mockito.when(passwordEncoder.matches(Mockito.anyString(), Mockito.anyString()))
+                    .thenReturn(false);
+
+            Assertions.assertThrows(UserNotFoundException.class, () -> {
+                authService.login(loginDto);
+            });
+
+        }
+        //LoginTests -> Should guard and test what if refreshTokenService.validateOnLogin fails
+//                   -> Should guard and test what if refreshTokenService.rotate fails
+//                   -> Should guard and test what if jwtUtil.generateToken fails
+
+        @Test
+        void loginSuccessTest(){
+            Set<String> userRoles = new HashSet<>();
+            userRoles.add("ROLE_USER");
+            userDto = new UserDto(1L, "Player1", "NamePlayer1", "SurnamePlayer1",
+                    "player1@gmail.com", userRoles);
+
+            Mockito.when(userRepository.findByEmailOrNick(Mockito.anyString()))
+                    .thenReturn(Optional.of(user));
+
+            Mockito.when(passwordEncoder.matches(Mockito.anyString(), Mockito.anyString()))
+                    .thenReturn(true);
+
+            Mockito.when(refreshTokenService.validateOnLogin(Mockito.any(User.class)))
+                    .thenReturn(refreshToken);
+
+            Mockito.when(refreshTokenService.rotate(Mockito.eq(refreshToken.getToken())))
+                    .thenReturn(refreshToken);
+
+            Mockito.when(jwtUtil.generateToken(Mockito.eq(user))).thenReturn("ReturnedJWTTokenString");
+
+            Mockito.when(userMapper.toUserDto(Mockito.any(User.class)))
+                            .thenReturn(userDto);
+
+            LoginResponseDtoService l = authService.login(loginDto);
+
+            Assertions.assertNotNull(l);
+
+            Mockito.verify(refreshTokenService).validateOnLogin(user);
+            Mockito.verify(refreshTokenService).rotate(refreshToken.getToken());
+            Mockito.verify(jwtUtil).generateToken(user);
+            Mockito.verify(userMapper).toUserDto(Mockito.any(User.class));
+
+        }
+
+    }
+
+    @Nested
+    class LogoutTests{
+
+        private String token;
+
+        @Test
+        void logoutFailTokenNullTest(){
+            token = null;
+
+            authService.logout(token);
+
+            Mockito.verify(refreshTokenService, Mockito.never()).validate(Mockito.anyString());
+            Mockito.verify(refreshTokenService, Mockito.never()).revoke(Mockito.anyString());
+        }
+
+        @Test
+        void logoutFailTokenEmptyTest(){
+            token = "";
+
+            authService.logout(token);
+
+            Mockito.verify(refreshTokenService, Mockito.never()).validate(Mockito.anyString());
+            Mockito.verify(refreshTokenService, Mockito.never()).revoke(Mockito.anyString());
+        }
+
+        @Test
+        void logoutFailRefreshTokenNotExistsTest(){
+            //Fail or success
+            token = "IncorrectRefreshToken";
+
+            Mockito.when(refreshTokenService.validate(token))
+                    .thenReturn(null);
+
+            authService.logout(token);
+
+            Mockito.verify(refreshTokenService).validate(token);
+            Mockito.verify(refreshTokenService, Mockito.never()).revoke(Mockito.anyString());
+
+        }
+
+        @Test
+        void logoutSuccessTest(){
+            token = "CorrectRefreshToken";
+            refreshToken = new RefreshToken(1L, "tokenLengthShouldBeExactly36CharsABC", false,
+                    LocalDateTime.now(clock), LocalDateTime.now(clock).plusDays(7), user);
+
+            Mockito.when(refreshTokenService.validate(token))
+                    .thenReturn(refreshToken);
+
+            authService.logout(token);
+
+            Mockito.verify(refreshTokenService).validate(token);
+            Mockito.verify(refreshTokenService).revoke(token);
+
+        }
+
+    }
 
 }
 
