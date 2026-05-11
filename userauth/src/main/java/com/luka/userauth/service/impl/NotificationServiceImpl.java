@@ -25,7 +25,7 @@ public class NotificationServiceImpl implements NotificationService {
         message.setFrom(PLATFORM_EMAIL);
         message.setSubject("Please confirm Your e-mail address");
         message.setText("Use link provided below to confirm Your e-mail address.\n\n"
-                + link + "\n\nThank You for playing with us! \n\nSincerely, \nFootball simulation game team");
+                + link + "\n\nThank You for playing with us!\n\nSincerely,\nFootball simulation game team");
 
         mailSender.send(message);
     }

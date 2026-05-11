@@ -39,11 +39,6 @@ public class User {
             mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserRoles> userRoles = new HashSet<>();
 
-    @PrePersist
-    protected void onCreate(){
-        this.createdAt = LocalDateTime.now();
-    }
-
     public User() {}
 
     public User(Long id, String nick, String name, String surname, String email, String password, boolean verified, LocalDateTime createdAt, Set<UserRoles> userRoles) {

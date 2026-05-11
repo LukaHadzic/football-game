@@ -23,6 +23,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -37,8 +39,9 @@ public class AuthServiceImpl implements AuthService {
     private final JWTUtil jwtUtil;
     private final RoleRepository roleRepository;
     private final RefreshTokenService refreshTokenService;
+    private final Clock clock;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil, RoleRepository roleRepository, RefreshTokenService refreshTokenService) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper, TokenService tokenService, TransactionTemplate transactionTemplate, NotificationService notificationService, JWTUtil jwtUtil, RoleRepository roleRepository, RefreshTokenService refreshTokenService, Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
@@ -48,6 +51,7 @@ public class AuthServiceImpl implements AuthService {
         this.jwtUtil = jwtUtil;
         this.roleRepository = roleRepository;
         this.refreshTokenService = refreshTokenService;
+        this.clock = clock;
     }
 
     @Override
@@ -63,6 +67,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userMapper.registerToEntity(registerDto);
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
         user.setVerified(false);
+        user.setCreatedAt(LocalDateTime.now(clock));
         user.addRole(defaultRole);
 
         //Call TokenService to generate token
@@ -104,7 +109,7 @@ public class AuthServiceImpl implements AuthService {
         //Nije doboro - sta ako je refresh istekao - proveriti
         //Vrv u validate(User) vratiti null ako je istekao pa ovde provera za create
 
-        RefreshToken newRefreshToken = refreshTokenService.rotate(refreshToken);
+        RefreshToken newRefreshToken = refreshTokenService.rotate(refreshToken.getToken());
 
         String token = jwtUtil.generateToken(user);
 
@@ -115,10 +120,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(String token) {
 
-        if(token == null) return;
+        if (token == null) return;
         RefreshToken dbToken = refreshTokenService.validate(token);
 
-        if(dbToken != null){
+        if (dbToken != null) {
             refreshTokenService.revoke(token);
         }
     }

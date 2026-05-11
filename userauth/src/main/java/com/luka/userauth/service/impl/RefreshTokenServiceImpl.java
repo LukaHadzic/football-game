@@ -3,15 +3,13 @@ package com.luka.userauth.service.impl;
 import com.luka.userauth.entity.RefreshToken;
 import com.luka.userauth.entity.User;
 import com.luka.userauth.exception.exceptionclasses.RefreshTokenException;
-import com.luka.userauth.exception.exceptionclasses.RegistrationFailedException;
 import com.luka.userauth.repository.RefreshTokenRepository;
 import com.luka.userauth.service.RefreshTokenService;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,13 +19,18 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     private final long REFRESH_TOKEN_VALID_FOR_DAYS = 7;
 
+    private final long TOKEN_VALID_LENGTH = 36;
+
     private final RefreshTokenRepository refreshTokenRepository;
 
     private final TransactionTemplate transactionTemplate;
 
-    public RefreshTokenServiceImpl(RefreshTokenRepository refreshTokenRepository, TransactionTemplate transactionTemplate) {
+    private final Clock clock;
+
+    public RefreshTokenServiceImpl(RefreshTokenRepository refreshTokenRepository, TransactionTemplate transactionTemplate, Clock clock) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.transactionTemplate = transactionTemplate;
+        this.clock = clock;
     }
 
     @Override
@@ -37,14 +40,17 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         newToken.setUser(user);
         newToken.setToken(UUID.randomUUID().toString());
         newToken.setRevoked(false);
-        newToken.setCreatedAt(LocalDateTime.now());
-        newToken.setExpiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_VALID_FOR_DAYS));
+        newToken.setCreatedAt(LocalDateTime.now(clock));
+        newToken.setExpiresAt(LocalDateTime.now(clock).plusDays(REFRESH_TOKEN_VALID_FOR_DAYS));
 
         return refreshTokenRepository.save(newToken);
     }
 
     @Override
     public RefreshToken validate(String token) {
+
+        if (token == null || token.length() != TOKEN_VALID_LENGTH) return null;
+
         RefreshToken dbToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new RefreshTokenException("Invalid refresh token."));
 
@@ -72,34 +78,41 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
-    public RefreshToken rotate(RefreshToken oldToken) {
+    public RefreshToken rotate(String token) {
 
         RefreshToken newToken = new RefreshToken();
         newToken.setToken(UUID.randomUUID().toString());
         newToken.setRevoked(false);
-        newToken.setCreatedAt(LocalDateTime.now());
-        newToken.setExpiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_VALID_FOR_DAYS));
+        newToken.setCreatedAt(LocalDateTime.now(clock));
+        newToken.setExpiresAt(LocalDateTime.now(clock).plusDays(REFRESH_TOKEN_VALID_FOR_DAYS));
 
         try {
             return transactionTemplate.execute(status -> {
-                RefreshToken oldDbToken = refreshTokenRepository.findByToken(oldToken.getToken())
-                        .orElseThrow(() -> new RefreshTokenException("Refresh token not valid."));
+//                RefreshToken oldDbToken = refreshTokenRepository.findByToken(token)
+//                        .orElseThrow(() -> new RefreshTokenException("Refresh token not valid."));
+//
+//                if(oldDbToken.isRevoked()){
+//                    throw new RefreshTokenException("Refresh token already revoked.");
+//                }
+//
+//                if(oldDbToken.isExpired()){
+//                    throw new RefreshTokenException("Refresh token expired.");
+//                }
 
-                if(oldDbToken.isRevoked()){
-                    throw new RefreshTokenException("Refresh token already revoked.");
-                }
+                RefreshToken oldDbToken = validate(token);
 
-                if(oldDbToken.getExpiresAt().isBefore(LocalDateTime.now())){
-                    throw new RefreshTokenException("Refresh token expired.");
-                }
+                if (oldDbToken == null) throw new RefreshTokenException("Token not valid.");
 
                 newToken.setUser(oldDbToken.getUser());
-                revoke(oldToken.getToken());
+                revoke(token);
 
                 refreshTokenRepository.save(oldDbToken);
                 return refreshTokenRepository.save(newToken);
 
             });
+        }catch (RefreshTokenException re) {
+            throw re;
+
         }catch(Exception e) {
             e.printStackTrace();
             throw new RefreshTokenException("Server error - refreshing failed, please try again later.");
@@ -110,12 +123,25 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     public void revoke(String token) {
 
-            int updated = refreshTokenRepository.revokeByToken(token);
+        if (token == null || token.length() != TOKEN_VALID_LENGTH) {
+            throw new RefreshTokenException("Refresh token not valid.");
+        }
 
-            if(updated == 0){
-                throw new RefreshTokenException("Refresh token not valid.");
-            }
+        int updated = refreshTokenRepository.revokeByToken(token);
 
+        if(updated == 0){
+            throw new RefreshTokenException("Refresh token not valid.");
+        }
+
+    }
+    @Override
+    public long getREFRESH_TOKEN_VALID_FOR_DAYS() {
+        return REFRESH_TOKEN_VALID_FOR_DAYS;
+    }
+
+    @Override
+    public long getTOKEN_VALID_LENGTH() {
+        return TOKEN_VALID_LENGTH;
     }
 
 }

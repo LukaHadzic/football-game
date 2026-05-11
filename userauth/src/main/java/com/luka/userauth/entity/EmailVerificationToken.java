@@ -34,11 +34,6 @@ public class EmailVerificationToken {
         this.user = user;
     }
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
-
     public Long getId() {
         return id;
     }

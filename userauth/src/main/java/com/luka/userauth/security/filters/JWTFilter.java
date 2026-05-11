@@ -33,7 +33,8 @@ public class JWTFilter extends OncePerRequestFilter {
         return path.equals("/auth/register")
                 || path.equals("/auth/login")
                 || path.equals("/auth/validate-email")
-                || path.equals("/auth/logout");
+                || path.equals("/auth/logout")
+                || path.equals("/auth/refresh");
     }
 
     private String getToken(String reqAuthHeader){

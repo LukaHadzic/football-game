@@ -12,8 +12,11 @@ public interface RefreshTokenService {
 
     RefreshToken validateOnLogin(User user);
 
-    RefreshToken rotate(RefreshToken oldToken);
+    RefreshToken rotate(String token);
 
     void revoke(String token);
 
+    long getREFRESH_TOKEN_VALID_FOR_DAYS();
+
+    long getTOKEN_VALID_LENGTH();
 }
